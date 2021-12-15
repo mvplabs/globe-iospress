@@ -1,0 +1,365 @@
+<!-- Styles -->
+<style>
+  #chartdiv {
+    max-width: 100%;
+    height: 600px;
+    background-color:#454a58;
+  }
+</style>
+
+<!-- Resources -->
+<script src="https://cdn.amcharts.com/lib/4/core.js"></script>
+<script src="https://cdn.amcharts.com/lib/4/maps.js"></script>
+<script src="https://cdn.amcharts.com/lib/4/geodata/continentsLow.js"></script>
+<script src="https://cdn.amcharts.com/lib/4/geodata/worldLow.js"></script>
+<script src="https://cdn.amcharts.com/lib/4/themes/animated.js"></script>
+
+<!-- Chart code -->
+<script>
+  am4core.ready(function () {
+
+    // Themes begin
+    am4core.useTheme(am4themes_animated);
+    // Themes end
+
+    // Create map instance
+    var chart = am4core.create("chartdiv", am4maps.MapChart);
+    var interfaceColors = new am4core.InterfaceColorSet();
+
+    try {
+      chart.geodata = am4geodata_worldLow;
+    }
+    catch (e) {
+      chart.raiseCriticalError(new Error("Map geodata could not be loaded. Please download the latest <a href=\"https://www.amcharts.com/download/download-v4/\">amcharts geodata</a> and extract its contents into the same directory as your amCharts files."));
+    }
+
+
+    var label = chart.createChild(am4core.Label)
+    label.text = "Total papers published by country in all journals \n Bullet size uses logarithmic scale.";
+    label.fontSize = 12;
+    label.align = "left";
+    label.valign = "bottom"
+    label.fill = am4core.color("#DDDDDD");
+    label.background = new am4core.RoundedRectangle()
+    label.background.cornerRadius(10, 10, 10, 10);
+    label.padding(10, 10, 10, 10);
+    label.marginLeft = 30;
+    label.marginBottom = 30;
+    label.background.strokeOpacity = 0.3;
+    label.background.stroke = am4core.color("#DDDDDD");
+    label.background.fill = am4core.color("#111111");
+    label.background.fillOpacity = 0.6;
+
+    var dataSource = chart.createChild(am4core.TextLink)
+    dataSource.text = "Data source: IOS press LD connect";
+    dataSource.fontSize = 12;
+    dataSource.align = "left";
+    dataSource.valign = "top"
+    dataSource.url = "https://www.iospress.com"
+    dataSource.urlTarget = "_blank";
+    dataSource.fill = am4core.color("#DDDDDD");
+    dataSource.padding(10, 10, 10, 10);
+    dataSource.marginLeft = 30;
+    dataSource.marginTop = 30;
+
+    // Set projection
+    chart.projection = new am4maps.projections.Orthographic();
+    chart.panBehavior = "rotateLongLat";
+    chart.padding(20, 20, 20, 20);
+
+    // Add zoom control
+    chart.zoomControl = new am4maps.ZoomControl();
+
+    var homeButton = new am4core.Button();
+    homeButton.events.on("hit", function () {
+      chart.goHome();
+    });
+
+    homeButton.icon = new am4core.Sprite();
+    homeButton.padding(7, 5, 7, 5);
+    homeButton.width = 30;
+    homeButton.icon.path = "M16,8 L14,8 L14,16 L10,16 L10,10 L6,10 L6,16 L2,16 L2,8 L0,8 L8,0 L16,8 Z M16,8";
+    homeButton.marginBottom = 10;
+    homeButton.parent = chart.zoomControl;
+    homeButton.insertBefore(chart.zoomControl.plusButton);
+
+    chart.backgroundSeries.mapPolygons.template.polygon.fill = am4core.color("#bfa58d");
+    chart.backgroundSeries.mapPolygons.template.polygon.fillOpacity = 1;
+    chart.deltaLongitude = 20;
+    chart.deltaLatitude = -20;
+
+    // limits vertical rotation
+    chart.adapter.add("deltaLatitude", function (delatLatitude) {
+      return am4core.math.fitToRange(delatLatitude, -90, 90);
+    })
+
+    let animation;
+    setTimeout(function () {
+      animation = chart.animate({ property: "deltaLongitude", to: 100000 }, 20000000);
+    }, 3000)
+
+    chart.seriesContainer.events.on("down", function () {
+      if (animation) {
+        animation.stop();
+      }
+    })
+
+    // Create map polygon series
+
+    var shadowPolygonSeries = chart.series.push(new am4maps.MapPolygonSeries());
+    shadowPolygonSeries.geodata = am4geodata_continentsLow;
+
+    try {
+      shadowPolygonSeries.geodata = am4geodata_continentsLow;
+    }
+    catch (e) {
+      shadowPolygonSeries.raiseCriticalError(new Error("Map geodata could not be loaded. Please download the latest <a href=\"https://www.amcharts.com/download/download-v4/\">amcharts geodata</a> and extract its contents into the same directory as your amCharts files."));
+    }
+
+    shadowPolygonSeries.useGeodata = true;
+    shadowPolygonSeries.dx = 2;
+    shadowPolygonSeries.dy = 2;
+    shadowPolygonSeries.mapPolygons.template.fill = am4core.color("#000");
+    shadowPolygonSeries.mapPolygons.template.fillOpacity = 0.2;
+    shadowPolygonSeries.mapPolygons.template.strokeOpacity = 0;
+    shadowPolygonSeries.fillOpacity = 0.1;
+    shadowPolygonSeries.fill = am4core.color("#000");
+
+
+    // Create map polygon series
+    var polygonSeries = chart.series.push(new am4maps.MapPolygonSeries());
+    polygonSeries.useGeodata = true;
+
+    polygonSeries.calculateVisualCenter = true;
+    polygonSeries.tooltip.background.fillOpacity = 0.2;
+    polygonSeries.tooltip.background.cornerRadius = 20;
+
+    var template = polygonSeries.mapPolygons.template;
+    template.nonScalingStroke = true;
+    template.fill = am4core.color("#f9e3ce");
+    template.stroke = am4core.color("#e2c9b0");
+
+    polygonSeries.calculateVisualCenter = true;
+    template.propertyFields.id = "id";
+    template.tooltipPosition = "fixed";
+    template.fillOpacity = 1;
+
+    template.events.on("over", function (event) {
+      if (event.target.dummyData) {
+        event.target.dummyData.isHover = true;
+      }
+    })
+    template.events.on("out", function (event) {
+      if (event.target.dummyData) {
+        event.target.dummyData.isHover = false;
+      }
+    })
+
+    var hs = polygonSeries.mapPolygons.template.states.create("hover");
+    hs.properties.fillOpacity = 1;
+    hs.properties.fill = am4core.color("#deb7ad");
+
+
+    var graticuleSeries = chart.series.push(new am4maps.GraticuleSeries());
+    graticuleSeries.mapLines.template.stroke = am4core.color("#fff");
+    graticuleSeries.fitExtent = false;
+    graticuleSeries.mapLines.template.strokeOpacity = 0.2;
+    graticuleSeries.mapLines.template.stroke = am4core.color("#fff");
+
+
+    var measelsSeries = chart.series.push(new am4maps.MapPolygonSeries())
+    measelsSeries.tooltip.background.fillOpacity = 0;
+    measelsSeries.tooltip.background.cornerRadius = 20;
+    measelsSeries.tooltip.autoTextColor = false;
+    measelsSeries.tooltip.label.fill = am4core.color("#000");
+    measelsSeries.tooltip.dy = -5;
+
+    var measelTemplate = measelsSeries.mapPolygons.template;
+    measelTemplate.fill = am4core.color("#bf7569");
+    measelTemplate.strokeOpacity = 0;
+    measelTemplate.fillOpacity = 0.75;
+    measelTemplate.tooltipPosition = "fixed";
+
+
+
+    var hs2 = measelsSeries.mapPolygons.template.states.create("hover");
+    hs2.properties.fillOpacity = 1;
+    hs2.properties.fill = am4core.color("#86240c");
+
+    polygonSeries.events.on("inited", function () {
+      polygonSeries.mapPolygons.each(function (mapPolygon) {
+        var count = data[mapPolygon.id];
+
+        if (count > 0) {
+          var polygon = measelsSeries.mapPolygons.create();
+          polygon.multiPolygon = am4maps.getCircle(mapPolygon.visualLongitude, mapPolygon.visualLatitude, Math.max(0.2, Math.log(count) * Math.LN10 / 10));
+          polygon.tooltipText = mapPolygon.dataItem.dataContext.name + ": " + count;
+          mapPolygon.dummyData = polygon;
+          polygon.events.on("over", function () {
+            mapPolygon.isHover = true;
+          })
+          polygon.events.on("out", function () {
+            mapPolygon.isHover = false;
+          })
+        }
+        else {
+          mapPolygon.tooltipText = mapPolygon.dataItem.dataContext.name + ": no data";
+          mapPolygon.fillOpacity = 0.9;
+        }
+
+      })
+    })
+
+
+    var data = {
+      "AL": 37,
+      "DZ": 741,
+      "AD": 4,
+      "AO": 1,
+      "AR": 1139,
+      "AM": 28,
+      "AU": 9697,
+      "AT": 2122,
+      "AZ": 8,
+      "BH": 62,
+      "BD": 423,
+      "BB": 1,
+      "BY": 54,
+      "BE": 3691,
+      "BJ": 4,
+      "BM": 2,
+      "BT": 2,
+      "BO": 16,
+      "BA": 53,
+      "BW": 19,
+      "BR": 6743,
+      "BG": 369,
+      "BF": 32,
+      "BI": 1,
+      "KH": 17,
+      "CM": 39,
+      "CA": 14044,
+      "CF": 2,
+      "TD": 1,
+      "CL": 1063,
+      "CN": 52532,
+      "CO": 541,
+      "CR": 46,
+      "HR": 394,
+      "CU": 240,
+      "CY": 168,
+      "DK": 2029,
+      "DO": 13,
+      "EC": 139,
+      "SV": 10,
+      "ER": 1,
+      "EE": 146,
+      "ET": 97,
+      "FO": 6,
+      "FJ": 14,
+      "FI": 3155,
+      "FR": 17312,
+      "GE": 164,
+      "DE": 24518,
+      "GH": 65,
+      "GR": 3047,
+      "GL": 2,
+      "GD": 4,
+      "GT": 19,
+      "GW": 3,
+      "HT": 9,
+      "HN": 23,
+      "HU": 1922,
+      "IS": 146,
+      "IN": 11947,
+      "ID": 628,
+      "IQ": 75,
+      "IE": 1476,
+      "IL": 3030,
+      "IT": 22247,
+      "JM": 115,
+      "JP": 18603,
+      "JO": 499,
+      "KZ": 68,
+      "KE": 59,
+      "KW": 154,
+      "LV": 129,
+      "LB": 205,
+      "LR": 1,
+      "LY": 14,
+      "LI": 2,
+      "LT": 1066,
+      "LU": 182,
+      "MW": 8,
+      "MY": 1590,
+      "MV": 2,
+      "ML": 4,
+      "MT": 82,
+      "MR": 1,
+      "MU": 28,
+      "MX": 2554,
+      "MD": 16,
+      "MN": 4,
+      "ME": 4,
+      "MA": 317,
+      "MZ": 10,
+      "NA": 6,
+      "NP": 57,
+      "NL": 9721,
+      "NC": 4,
+      "NZ": 1155,
+      "NG": 888,
+      "NO": 1963,
+      "OM": 132,
+      "PK": 1678,
+      "PA": 72,
+      "PG": 5,
+      "PY": 24,
+      "PE": 101,
+      "PH": 116,
+      "PL": 4429,
+      "PT": 3075,
+      "PR": 61,
+      "QA": 174,
+      "RO": 1043,
+      "RU": 2830,
+      "RW": 5,
+      "SM": 1,
+      "SA": 1532,
+      "SN": 51,
+      "RS": 666,
+      "SL": 3,
+      "SG": 1597,
+      "SI": 564,
+      "ZA": 545,
+      "ES": 11856,
+      "LK": 107,
+      "SD": 30,
+      "SR": 1,
+      "SE": 7114,
+      "CH": 3065,
+      "TJ": 1,
+      "TZ": 26,
+      "TH": 863,
+      "TT": 32,
+      "TN": 757,
+      "TR": 5735,
+      "UG": 43,
+      "UA": 281,
+      "AE": 236,
+      "GB": 17532,
+      "US": 88779,
+      "UY": 55,
+      "UZ": 17,
+      "VE": 332,
+      "VN": 434,
+      "YE": 28,
+      "ZM": 1,
+      "ZW": 18,
+    }
+
+  }); // end am4core.ready()
+</script>
+
+<!-- HTML -->
+<div id="chartdiv"></div>
